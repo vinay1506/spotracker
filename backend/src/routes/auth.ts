@@ -1,4 +1,3 @@
-
 import express from 'express';
 import axios from 'axios';
 import querystring from 'querystring';
@@ -18,27 +17,63 @@ const generateRandomString = (length: number): string => {
 
 // Login route
 router.get('/login', (req, res) => {
-  const state = generateRandomString(16);
-  req.session.state = state;
+  try {
+    // Log the full environment
+    console.log('=== Login Route Environment ===');
+    console.log('process.env keys:', Object.keys(process.env));
+    console.log('SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID);
+    console.log('SPOTIFY_REDIRECT_URI:', process.env.SPOTIFY_REDIRECT_URI);
+    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('============================');
 
-  const scope = [
-    'user-read-private',
-    'user-read-email',
-    'user-top-read',
-    'user-read-recently-played',
-    'user-read-currently-playing',
-    'user-read-playback-state'
-  ].join(' ');
+    if (!process.env.SPOTIFY_CLIENT_ID) {
+      const error = 'SPOTIFY_CLIENT_ID is not set in environment variables';
+      console.error(error);
+      console.error('Current working directory:', process.cwd());
+      console.error('Environment file location:', require('path').resolve(process.cwd(), '.env'));
+      return res.status(500).json({ 
+        error: 'Server configuration error: Missing SPOTIFY_CLIENT_ID',
+        details: {
+          workingDirectory: process.cwd(),
+          envFileLocation: require('path').resolve(process.cwd(), '.env'),
+          envKeys: Object.keys(process.env)
+        }
+      });
+    }
 
-  const queryParams = querystring.stringify({
-    response_type: 'code',
-    client_id: process.env.SPOTIFY_CLIENT_ID,
-    scope,
-    redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-    state
-  });
+    if (!process.env.SPOTIFY_REDIRECT_URI) {
+      console.error('SPOTIFY_REDIRECT_URI is not set in environment variables');
+      return res.status(500).json({ error: 'Server configuration error: Missing SPOTIFY_REDIRECT_URI' });
+    }
 
-  res.redirect(`https://accounts.spotify.com/authorize?${queryParams}`);
+    const state = generateRandomString(16);
+    req.session.state = state;
+
+    const scope = [
+      'user-read-private',
+      'user-read-email',
+      'user-top-read',
+      'user-read-recently-played',
+      'user-read-currently-playing',
+      'user-read-playback-state'
+    ].join(' ');
+
+    const queryParams = querystring.stringify({
+      response_type: 'code',
+      client_id: process.env.SPOTIFY_CLIENT_ID,
+      scope,
+      redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
+      state
+    });
+
+    const authUrl = `https://accounts.spotify.com/authorize?${queryParams}`;
+    console.log('Redirecting to Spotify auth URL:', authUrl);
+    res.redirect(authUrl);
+  } catch (error) {
+    console.error('Login route error:', error);
+    res.status(500).json({ error: 'Internal server error during login' });
+  }
 });
 
 // Callback route

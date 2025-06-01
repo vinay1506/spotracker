@@ -1,12 +1,23 @@
-
 import express from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import authRoutes from './routes/auth';
 import apiRoutes from './routes/api';
 
-dotenv.config();
+// Load environment variables from .env file
+const envPath = path.resolve(__dirname, '..', '.env');
+console.log('Loading environment variables from:', envPath);
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.error('Error loading .env file:', result.error);
+  process.exit(1);
+}
+
+console.log('Environment variables loaded successfully');
+console.log('SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID ? 'Set' : 'Not Set');
 
 const app = express();
 const PORT = process.env.PORT || 8888;
@@ -59,6 +70,13 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 app.listen(PORT, () => {
+  console.log('=== Server Environment Variables ===');
+  console.log('PORT:', process.env.PORT);
+  console.log('SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID ? 'Set' : 'Not Set');
+  console.log('SPOTIFY_REDIRECT_URI:', process.env.SPOTIFY_REDIRECT_URI);
+  console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('================================');
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🎵 Spotify OAuth: ${process.env.SPOTIFY_CLIENT_ID ? 'Configured' : 'Not configured'}`);
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL}`);
