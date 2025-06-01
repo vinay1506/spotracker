@@ -1,8 +1,7 @@
-
 import axios from 'axios';
 import { SpotifyUser, TopTracksResponse, TopArtistsResponse, RecentlyPlayedResponse, ListeningStatsResponse, TimeRange } from '../types/spotify';
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'http://127.0.0.1:8888';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
