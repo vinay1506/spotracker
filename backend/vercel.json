@@ -8,6 +8,18 @@
   ],
   "routes": [
     {
+      "src": "/auth/(.*)",
+      "dest": "src/server.ts"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "src/server.ts"
+    },
+    {
+      "src": "/health",
+      "dest": "src/server.ts"
+    },
+    {
       "src": "/(.*)",
       "dest": "src/server.ts"
     }
