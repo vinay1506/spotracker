@@ -1,165 +1,133 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import axios from 'axios';
 import querystring from 'querystring';
 import { SpotifyTokens, SpotifyUser } from '../types';
 
 const router = express.Router();
 
+// Spotify API endpoints
+const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
+const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
+
 // Generate random string for state parameter
 const generateRandomString = (length: number): string => {
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let text = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
   for (let i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
   }
-  return text;
+  return result;
 };
 
 // Login route
-router.get('/login', (req, res) => {
-  try {
-    // Get the redirect URI from query params or use default
-    const redirectUri = req.query.redirect_uri as string || process.env.FRONTEND_URL;
-    
-    // Log the full environment
-    console.log('=== Login Route Environment ===');
-    console.log('process.env keys:', Object.keys(process.env));
-    console.log('SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID);
-    console.log('SPOTIFY_REDIRECT_URI:', process.env.SPOTIFY_REDIRECT_URI);
-    console.log('FRONTEND_URL:', redirectUri);
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('============================');
+router.get('/login', (req: Request, res: Response) => {
+  const state = generateRandomString(16);
+  const scope = 'user-read-private user-read-email user-top-read user-read-recently-played';
 
-    if (!process.env.SPOTIFY_CLIENT_ID) {
-      const error = 'SPOTIFY_CLIENT_ID is not set in environment variables';
-      console.error(error);
-      return res.status(500).json({ error: 'Server configuration error: Missing SPOTIFY_CLIENT_ID' });
-    }
+  // Store state and redirect URI in session
+  req.session.state = state;
+  req.session.redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
-    if (!process.env.SPOTIFY_REDIRECT_URI) {
-      console.error('SPOTIFY_REDIRECT_URI is not set in environment variables');
-      return res.status(500).json({ error: 'Server configuration error: Missing SPOTIFY_REDIRECT_URI' });
-    }
+  // Log session data for debugging
+  console.log('Session data:', {
+    state: req.session.state,
+    redirectUri: req.session.redirectUri,
+    sessionID: req.sessionID
+  });
 
-    const state = generateRandomString(16);
-    req.session.state = state;
-    req.session.redirectUri = redirectUri;
+  // Log environment variables for debugging
+  console.log('Environment variables:', {
+    clientId: process.env.SPOTIFY_CLIENT_ID,
+    redirectUri: process.env.SPOTIFY_REDIRECT_URI,
+    nodeEnv: process.env.NODE_ENV
+  });
 
-    const scope = [
-      'user-read-private',
-      'user-read-email',
-      'user-top-read',
-      'user-read-recently-played',
-      'user-read-currently-playing',
-      'user-read-playback-state'
-    ].join(' ');
+  // Construct authorization URL
+  const authUrl = new URL(SPOTIFY_AUTH_URL);
+  authUrl.searchParams.append('response_type', 'code');
+  authUrl.searchParams.append('client_id', process.env.SPOTIFY_CLIENT_ID || '');
+  authUrl.searchParams.append('scope', scope);
+  authUrl.searchParams.append('redirect_uri', req.session.redirectUri || '');
+  authUrl.searchParams.append('state', state);
 
-    const queryParams = querystring.stringify({
-      response_type: 'code',
-      client_id: process.env.SPOTIFY_CLIENT_ID,
-      scope,
-      redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-      state
-    });
-
-    const authUrl = `https://accounts.spotify.com/authorize?${queryParams}`;
-    console.log('Redirecting to Spotify auth URL:', authUrl);
-    res.redirect(authUrl);
-  } catch (error) {
-    console.error('Login route error:', error);
-    res.status(500).json({ error: 'Internal server error during login' });
-  }
+  res.redirect(authUrl.toString());
 });
 
 // Callback route
-router.get('/callback', async (req, res) => {
-  const { code, state, error } = req.query;
-  const redirectUri = req.session.redirectUri || process.env.FRONTEND_URL;
+router.get('/callback', async (req: Request, res: Response) => {
+  const { code, state } = req.query;
+  const storedState = req.session.state;
 
-  if (error) {
-    console.error('Spotify auth error:', error);
-    return res.redirect(`${redirectUri}?error=access_denied`);
-  }
-
-  if (state !== req.session.state) {
-    console.error('State mismatch');
-    return res.redirect(`${redirectUri}?error=state_mismatch`);
+  if (!state || !storedState || state !== storedState) {
+    console.error('State mismatch:', { received: state, stored: storedState });
+    return res.status(400).json({ error: 'State mismatch' });
   }
 
   try {
-    // Exchange code for tokens
     const tokenResponse = await axios.post(
-      'https://accounts.spotify.com/api/token',
+      SPOTIFY_TOKEN_URL,
       querystring.stringify({
         grant_type: 'authorization_code',
         code: code as string,
-        redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-        client_id: process.env.SPOTIFY_CLIENT_ID,
-        client_secret: process.env.SPOTIFY_CLIENT_SECRET
+        redirect_uri: req.session.redirectUri
       }),
       {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${Buffer.from(
+            `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+          ).toString('base64')}`
         }
       }
     );
 
-    const tokens: SpotifyTokens = {
-      ...tokenResponse.data,
-      expires_at: Date.now() + (tokenResponse.data.expires_in * 1000)
-    };
+    const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
-    // Get user profile
-    const userResponse = await axios.get('https://api.spotify.com/v1/me', {
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`
-      }
-    });
+    // Store tokens in session
+    req.session.accessToken = access_token;
+    req.session.refreshToken = refresh_token;
+    req.session.tokenExpiry = Date.now() + expires_in * 1000;
 
-    const user: SpotifyUser = userResponse.data;
-
-    // Store in session
-    req.session.tokens = tokens;
-    req.session.user = user;
-
-    console.log('User authenticated:', user.display_name);
-    res.redirect(`${redirectUri}?success=true`);
+    // Redirect to frontend
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   } catch (error) {
     console.error('Token exchange error:', error);
-    res.redirect(`${redirectUri}?error=token_exchange_failed`);
+    res.status(500).json({ error: 'Failed to exchange code for token' });
   }
 });
 
 // Refresh token route
-router.post('/refresh-token', async (req, res) => {
-  if (!req.session?.tokens?.refresh_token) {
+router.post('/refresh', async (req: Request, res: Response) => {
+  const refreshToken = req.session.refreshToken;
+
+  if (!refreshToken) {
     return res.status(401).json({ error: 'No refresh token available' });
   }
 
   try {
     const response = await axios.post(
-      'https://accounts.spotify.com/api/token',
+      SPOTIFY_TOKEN_URL,
       querystring.stringify({
         grant_type: 'refresh_token',
-        refresh_token: req.session.tokens.refresh_token,
-        client_id: process.env.SPOTIFY_CLIENT_ID,
-        client_secret: process.env.SPOTIFY_CLIENT_SECRET
+        refresh_token: refreshToken
       }),
       {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${Buffer.from(
+            `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+          ).toString('base64')}`
         }
       }
     );
 
-    const newTokens: SpotifyTokens = {
-      ...req.session.tokens,
-      ...response.data,
-      expires_at: Date.now() + (response.data.expires_in * 1000)
-    };
+    const { access_token, expires_in } = response.data;
 
-    req.session.tokens = newTokens;
-    res.json({ success: true });
+    // Update session with new access token
+    req.session.accessToken = access_token;
+    req.session.tokenExpiry = Date.now() + expires_in * 1000;
+
+    res.json({ access_token, expires_in });
   } catch (error) {
     console.error('Token refresh error:', error);
     res.status(500).json({ error: 'Failed to refresh token' });
@@ -167,27 +135,28 @@ router.post('/refresh-token', async (req, res) => {
 });
 
 // Logout route
-router.post('/logout', (req, res) => {
+router.post('/logout', (req: Request, res: Response) => {
   req.session.destroy((err) => {
     if (err) {
-      console.error('Session destroy error:', err);
+      console.error('Session destruction error:', err);
       return res.status(500).json({ error: 'Failed to logout' });
     }
-    res.clearCookie('connect.sid');
-    res.json({ success: true });
+    res.json({ message: 'Logged out successfully' });
   });
 });
 
-// Check auth status
-router.get('/status', (req, res) => {
-  if (req.session?.tokens?.access_token && req.session?.user) {
-    res.json({
-      authenticated: true,
-      user: req.session.user
-    });
-  } else {
-    res.json({ authenticated: false });
-  }
+// Check auth status route
+router.get('/status', (req: Request, res: Response) => {
+  const isAuthenticated = !!req.session.accessToken;
+  const tokenExpiry = req.session.tokenExpiry;
+  const needsRefresh = tokenExpiry ? Date.now() >= tokenExpiry : true;
+
+  res.json({
+    isAuthenticated,
+    needsRefresh,
+    hasSession: !!req.session,
+    sessionID: req.sessionID
+  });
 });
 
 export default router;
