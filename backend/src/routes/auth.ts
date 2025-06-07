@@ -23,10 +23,11 @@ const generateRandomString = (length: number): string => {
 router.get('/login', (req: Request & { session: CustomSession }, res: Response) => {
   const state = generateRandomString(16);
   const scope = 'user-read-private user-read-email user-top-read user-read-recently-played';
+  const redirectUri = 'https://spotracker-hvyy.vercel.app/auth/callback';
 
   // Store state and redirect URI in session
   req.session.state = state;
-  req.session.redirectUri = process.env.SPOTIFY_REDIRECT_URI;
+  req.session.redirectUri = redirectUri;
 
   // Log session data for debugging
   console.log('Session data:', {
@@ -38,18 +39,19 @@ router.get('/login', (req: Request & { session: CustomSession }, res: Response) 
   // Log environment variables for debugging
   console.log('Environment variables:', {
     clientId: process.env.SPOTIFY_CLIENT_ID,
-    redirectUri: process.env.SPOTIFY_REDIRECT_URI,
+    redirectUri,
     nodeEnv: process.env.NODE_ENV
   });
 
-  // Construct authorization URL
+  // Create URL object for proper encoding
   const authUrl = new URL(SPOTIFY_AUTH_URL);
   authUrl.searchParams.append('response_type', 'code');
   authUrl.searchParams.append('client_id', process.env.SPOTIFY_CLIENT_ID || '');
   authUrl.searchParams.append('scope', scope);
-  authUrl.searchParams.append('redirect_uri', req.session.redirectUri || '');
+  authUrl.searchParams.append('redirect_uri', redirectUri);
   authUrl.searchParams.append('state', state);
 
+  console.log('Auth URL:', authUrl.toString());
   res.redirect(authUrl.toString());
 });
 
