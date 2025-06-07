@@ -18,7 +18,7 @@ const allowedOrigins = [
   'https://spotracker-ruddy.vercel.app',
   'https://spotracker-frontend.vercel.app',
   'https://spotracker.vercel.app',
-  'http://localhost:5173' // Add local development URL for Vite
+  'http://localhost:5173'
 ];
 
 app.use(cors({
@@ -62,7 +62,11 @@ app.get('/health', (req, res) => {
   res.json({
     message: 'Spotify Analytics API',
     version: '1.0.0',
-    status: 'running'
+    status: 'running',
+    env: process.env.NODE_ENV,
+    cors: {
+      allowedOrigins
+    }
   });
 });
 
