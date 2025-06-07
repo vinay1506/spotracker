@@ -1,6 +1,5 @@
-
 {
-  "name": "spotify-analytics-backend",
+  "name": "spotify-tempo-tracker-backend",
   "version": "1.0.0",
   "description": "Spotify Analytics Backend",
   "main": "dist/server.js",
