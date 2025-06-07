@@ -57,6 +57,15 @@ router.get('/login', (req: Request & { session: CustomSession }, res: Response) 
 router.get('/callback', async (req: Request & { session: CustomSession }, res: Response) => {
   const { code, state } = req.query;
   const storedState = req.session.state;
+  const redirectUri = 'https://spotracker-hvyy.vercel.app/auth/callback';
+
+  console.log('Callback received:', {
+    code,
+    state,
+    storedState,
+    redirectUri,
+    sessionID: req.sessionID
+  });
 
   if (!state || !storedState || state !== storedState) {
     console.error('State mismatch:', { received: state, stored: storedState });
@@ -69,7 +78,7 @@ router.get('/callback', async (req: Request & { session: CustomSession }, res: R
       querystring.stringify({
         grant_type: 'authorization_code',
         code: code as string,
-        redirect_uri: req.session.redirectUri
+        redirect_uri: redirectUri
       }),
       {
         headers: {
@@ -81,6 +90,12 @@ router.get('/callback', async (req: Request & { session: CustomSession }, res: R
       }
     );
 
+    console.log('Token response received:', {
+      status: tokenResponse.status,
+      hasAccessToken: !!tokenResponse.data.access_token,
+      hasRefreshToken: !!tokenResponse.data.refresh_token
+    });
+
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
     // Store tokens in session
@@ -90,8 +105,8 @@ router.get('/callback', async (req: Request & { session: CustomSession }, res: R
 
     // Redirect to frontend
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
-  } catch (error) {
-    console.error('Token exchange error:', error);
+  } catch (error: any) {
+    console.error('Token exchange error:', error.response?.data || error);
     res.status(500).json({ error: 'Failed to exchange code for token' });
   }
 });
