@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import querystring from 'querystring';
+import { CustomSession } from '../types/session';
 
 const router = express.Router();
 
@@ -19,20 +20,18 @@ const generateRandomString = (length: number): string => {
 };
 
 // Login route
-router.get('/login', (req: Request, res: Response) => {
+router.get('/login', (req: Request & { session: CustomSession }, res: Response) => {
   const state = generateRandomString(16);
   const scope = 'user-read-private user-read-email user-top-read user-read-recently-played';
 
   // Store state and redirect URI in session
-  if (req.session) {
-    req.session.state = state;
-    req.session.redirectUri = process.env.SPOTIFY_REDIRECT_URI;
-  }
+  req.session.state = state;
+  req.session.redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
   // Log session data for debugging
   console.log('Session data:', {
-    state: req.session?.state,
-    redirectUri: req.session?.redirectUri,
+    state: req.session.state,
+    redirectUri: req.session.redirectUri,
     sessionID: req.sessionID
   });
 
@@ -48,16 +47,16 @@ router.get('/login', (req: Request, res: Response) => {
   authUrl.searchParams.append('response_type', 'code');
   authUrl.searchParams.append('client_id', process.env.SPOTIFY_CLIENT_ID || '');
   authUrl.searchParams.append('scope', scope);
-  authUrl.searchParams.append('redirect_uri', req.session?.redirectUri || '');
+  authUrl.searchParams.append('redirect_uri', req.session.redirectUri || '');
   authUrl.searchParams.append('state', state);
 
   res.redirect(authUrl.toString());
 });
 
 // Callback route
-router.get('/callback', async (req: Request, res: Response) => {
+router.get('/callback', async (req: Request & { session: CustomSession }, res: Response) => {
   const { code, state } = req.query;
-  const storedState = req.session?.state;
+  const storedState = req.session.state;
 
   if (!state || !storedState || state !== storedState) {
     console.error('State mismatch:', { received: state, stored: storedState });
@@ -70,7 +69,7 @@ router.get('/callback', async (req: Request, res: Response) => {
       querystring.stringify({
         grant_type: 'authorization_code',
         code: code as string,
-        redirect_uri: req.session?.redirectUri
+        redirect_uri: req.session.redirectUri
       }),
       {
         headers: {
@@ -85,11 +84,9 @@ router.get('/callback', async (req: Request, res: Response) => {
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
     // Store tokens in session
-    if (req.session) {
-      req.session.accessToken = access_token;
-      req.session.refreshToken = refresh_token;
-      req.session.tokenExpiry = Date.now() + expires_in * 1000;
-    }
+    req.session.accessToken = access_token;
+    req.session.refreshToken = refresh_token;
+    req.session.tokenExpiry = Date.now() + expires_in * 1000;
 
     // Redirect to frontend
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
@@ -100,8 +97,8 @@ router.get('/callback', async (req: Request, res: Response) => {
 });
 
 // Refresh token route
-router.post('/refresh', async (req: Request, res: Response) => {
-  const refreshToken = req.session?.refreshToken;
+router.post('/refresh', async (req: Request & { session: CustomSession }, res: Response) => {
+  const refreshToken = req.session.refreshToken;
 
   if (!refreshToken) {
     return res.status(401).json({ error: 'No refresh token available' });
@@ -127,10 +124,8 @@ router.post('/refresh', async (req: Request, res: Response) => {
     const { access_token, expires_in } = response.data;
 
     // Update session with new access token
-    if (req.session) {
-      req.session.accessToken = access_token;
-      req.session.tokenExpiry = Date.now() + expires_in * 1000;
-    }
+    req.session.accessToken = access_token;
+    req.session.tokenExpiry = Date.now() + expires_in * 1000;
 
     res.json({ access_token, expires_in });
   } catch (error) {
@@ -140,7 +135,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
 });
 
 // Logout route
-router.post('/logout', (req: Request, res: Response) => {
+router.post('/logout', (req: Request & { session: CustomSession }, res: Response) => {
   req.session.destroy((err) => {
     if (err) {
       console.error('Session destruction error:', err);
@@ -151,9 +146,9 @@ router.post('/logout', (req: Request, res: Response) => {
 });
 
 // Check auth status route
-router.get('/status', (req: Request, res: Response) => {
-  const isAuthenticated = !!req.session?.accessToken;
-  const tokenExpiry = req.session?.tokenExpiry;
+router.get('/status', (req: Request & { session: CustomSession }, res: Response) => {
+  const isAuthenticated = !!req.session.accessToken;
+  const tokenExpiry = req.session.tokenExpiry;
   const needsRefresh = tokenExpiry ? Date.now() >= tokenExpiry : true;
 
   res.json({
