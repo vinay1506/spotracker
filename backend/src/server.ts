@@ -45,7 +45,20 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
+    session: {
+      hasSession: !!req.session,
+      sessionId: req.sessionID
+    }
+  });
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Spotify Analytics API',
+    version: '1.0.0',
+    status: 'running'
   });
 });
 
@@ -55,15 +68,18 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log('=== Server Environment Variables ===');
-  console.log('PORT:', process.env.PORT);
-  console.log('SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID ? 'Set' : 'Not Set');
-  console.log('SPOTIFY_REDIRECT_URI:', process.env.SPOTIFY_REDIRECT_URI);
-  console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('================================');
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+// Start server
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log('=== Server Environment Variables ===');
+    console.log('PORT:', process.env.PORT);
+    console.log('SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID ? 'Set' : 'Not Set');
+    console.log('SPOTIFY_REDIRECT_URI:', process.env.SPOTIFY_REDIRECT_URI);
+    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('================================');
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
 
 export default app;
