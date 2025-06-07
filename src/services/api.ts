@@ -36,29 +36,23 @@ export const authAPI = {
   },
 };
 
-// Spotify data endpoints
+// Spotify API endpoints
 export const spotifyAPI = {
-  getTopTracks: async (timeRange: TimeRange = 'medium_term', limit: number = 20): Promise<TopTracksResponse> => {
-    const response = await api.get('/api/top-tracks', {
-      params: { time_range: timeRange, limit }
-    });
+  getTopTracks: async (timeRange: TimeRange = 'medium_term'): Promise<TopTracksResponse> => {
+    const response = await api.get(`/api/top-tracks?time_range=${timeRange}`);
     return response.data;
   },
-  
-  getTopArtists: async (timeRange: TimeRange = 'medium_term', limit: number = 20): Promise<TopArtistsResponse> => {
-    const response = await api.get('/api/top-artists', {
-      params: { time_range: timeRange, limit }
-    });
+
+  getTopArtists: async (timeRange: TimeRange = 'medium_term'): Promise<TopArtistsResponse> => {
+    const response = await api.get(`/api/top-artists?time_range=${timeRange}`);
     return response.data;
   },
-  
-  getRecentlyPlayed: async (limit: number = 50): Promise<RecentlyPlayedResponse> => {
-    const response = await api.get('/api/recently-played', {
-      params: { limit }
-    });
+
+  getRecentlyPlayed: async (): Promise<RecentlyPlayedResponse> => {
+    const response = await api.get('/api/recently-played');
     return response.data;
   },
-  
+
   getListeningStats: async (): Promise<ListeningStatsResponse> => {
     const response = await api.get('/api/total-listening-hours');
     return response.data;

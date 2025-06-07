@@ -1,4 +1,3 @@
-
 export interface SpotifyUser {
   id: string;
   display_name: string;
@@ -77,10 +76,10 @@ export interface RecentlyPlayedResponse {
 
 export interface ListeningStatsResponse {
   totalHours: number;
-  tracksCount: number;
-  dailyListening: Record<string, number>;
-  topGenres: Array<{ genre: string; count: number }>;
-  averageHoursPerDay: number;
+  averageDailyHours: number;
+  totalTracks: number;
+  totalArtists: number;
+  topGenres: string[];
 }
 
 export type TimeRange = 'short_term' | 'medium_term' | 'long_term';
