@@ -21,15 +21,25 @@ const allowedOrigins = [
   'http://localhost:5173'
 ];
 
+console.log('Allowed CORS origins:', allowedOrigins); // Debug log
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('No origin provided, allowing request'); // Debug log
+      return callback(null, true);
+    }
+    
+    console.log('Checking origin:', origin); // Debug log
     
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      console.log('CORS error:', msg, 'Origin:', origin); // Debug log
       return callback(new Error(msg), false);
     }
+    
+    console.log('Origin allowed:', origin); // Debug log
     return callback(null, true);
   },
   credentials: true,
