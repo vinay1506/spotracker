@@ -1,5 +1,4 @@
-
-import express from 'express';
+import express, { Request, Response } from 'express';
 import axios from 'axios';
 import { requireAuth } from '../middleware/auth';
 import { SpotifyTrack, SpotifyArtist, RecentlyPlayedItem } from '../types';
@@ -10,7 +9,7 @@ const router = express.Router();
 router.use(requireAuth);
 
 // Helper function to make Spotify API calls
-const spotifyRequest = async (req: express.Request, endpoint: string, params?: Record<string, string>) => {
+const spotifyRequest = async (req: Request, endpoint: string, params?: Record<string, string>) => {
   const url = new URL(`https://api.spotify.com/v1${endpoint}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -34,7 +33,7 @@ const spotifyRequest = async (req: express.Request, endpoint: string, params?: R
 };
 
 // Get top tracks
-router.get('/top-tracks', async (req, res) => {
+router.get('/top-tracks', async (req: Request, res: Response) => {
   try {
     const timeRange = (req.query.time_range as string) || 'medium_term';
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
@@ -55,7 +54,7 @@ router.get('/top-tracks', async (req, res) => {
 });
 
 // Get top artists
-router.get('/top-artists', async (req, res) => {
+router.get('/top-artists', async (req: Request, res: Response) => {
   try {
     const timeRange = (req.query.time_range as string) || 'medium_term';
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
@@ -76,7 +75,7 @@ router.get('/top-artists', async (req, res) => {
 });
 
 // Get recently played tracks
-router.get('/recently-played', async (req, res) => {
+router.get('/recently-played', async (req: Request, res: Response) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
     const before = req.query.before as string;
@@ -99,7 +98,7 @@ router.get('/recently-played', async (req, res) => {
 });
 
 // Get total listening hours (estimated from recently played)
-router.get('/total-listening-hours', async (req, res) => {
+router.get('/total-listening-hours', async (req: Request, res: Response) => {
   try {
     // Get recently played tracks from the last 30 days
     const thirtyDaysAgo = new Date();

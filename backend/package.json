@@ -5,7 +5,7 @@
   "main": "src/server.ts",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "./node_modules/.bin/tsc",
+    "build": "tsc",
     "start": "node dist/server.js",
     "vercel-build": "npm install && npm run build"
   },
@@ -24,6 +24,7 @@
     "@types/express-session": "^1.17.10",
     "@types/cors": "^2.8.17",
     "@types/node": "^20.0.0",
+    "@types/querystring": "^0.2.0",
     "ts-node-dev": "^2.0.0"
   }
 }
