@@ -13,8 +13,25 @@ const app = express();
 const PORT = process.env.PORT || 8888;
 
 // CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'https://spotracker-ruddy.vercel.app',
+  'https://spotracker-frontend.vercel.app',
+  'https://spotracker.vercel.app',
+  'http://localhost:5173' // Add local development URL for Vite
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://127.0.0.1:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -43,13 +60,9 @@ app.use('/api', apiRoutes);
 // Health check route
 app.get('/health', (req, res) => {
   res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    session: {
-      hasSession: !!req.session,
-      sessionId: req.sessionID
-    }
+    message: 'Spotify Analytics API',
+    version: '1.0.0',
+    status: 'running'
   });
 });
 

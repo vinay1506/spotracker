@@ -9,19 +9,50 @@
   "routes": [
     {
       "src": "/auth/(.*)",
-      "dest": "/src/server.ts"
+      "dest": "/src/server.ts",
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "https://spotracker-ruddy.vercel.app",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/api/(.*)",
-      "dest": "/src/server.ts"
+      "dest": "/src/server.ts",
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "https://spotracker-ruddy.vercel.app",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/health",
-      "dest": "/src/server.ts"
+      "dest": "/src/server.ts",
+      "methods": ["GET"],
+      "headers": {
+        "Access-Control-Allow-Origin": "https://spotracker-ruddy.vercel.app",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "GET",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "/src/server.ts"
+      "dest": "/src/server.ts",
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "https://spotracker-ruddy.vercel.app",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Credentials": "true"
+      }
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 } 
