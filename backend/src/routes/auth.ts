@@ -66,8 +66,15 @@ router.get('/callback', async (req: Request & { session: CustomSession }, res: R
     state,
     storedState,
     redirectUri,
-    sessionID: req.sessionID
+    sessionID: req.sessionID,
+    session: req.session
   });
+
+  // For testing purposes, allow direct access to callback
+  if (!code) {
+    console.log('No code provided, returning test response');
+    return res.json({ message: 'Callback endpoint is working' });
+  }
 
   if (!state || !storedState || state !== storedState) {
     console.error('State mismatch:', { received: state, stored: storedState });
