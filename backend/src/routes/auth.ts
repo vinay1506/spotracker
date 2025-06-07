@@ -29,30 +29,32 @@ router.get('/login', (req: Request & { session: CustomSession }, res: Response) 
   req.session.state = state;
   req.session.redirectUri = redirectUri;
 
-  // Log session data for debugging
-  console.log('Session data:', {
-    state: req.session.state,
-    redirectUri: req.session.redirectUri,
-    sessionID: req.sessionID
+  // Save session before redirect
+  req.session.save((err) => {
+    if (err) {
+      console.error('Session save error:', err);
+      return res.status(500).json({ error: 'Failed to save session' });
+    }
+
+    // Log session data for debugging
+    console.log('Session data:', {
+      state: req.session.state,
+      redirectUri: req.session.redirectUri,
+      sessionID: req.sessionID,
+      cookie: req.session.cookie
+    });
+
+    // Create URL object for proper encoding
+    const authUrl = new URL(SPOTIFY_AUTH_URL);
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('client_id', process.env.SPOTIFY_CLIENT_ID || '');
+    authUrl.searchParams.append('scope', scope);
+    authUrl.searchParams.append('redirect_uri', redirectUri);
+    authUrl.searchParams.append('state', state);
+
+    console.log('Auth URL:', authUrl.toString());
+    res.redirect(authUrl.toString());
   });
-
-  // Log environment variables for debugging
-  console.log('Environment variables:', {
-    clientId: process.env.SPOTIFY_CLIENT_ID,
-    redirectUri,
-    nodeEnv: process.env.NODE_ENV
-  });
-
-  // Create URL object for proper encoding
-  const authUrl = new URL(SPOTIFY_AUTH_URL);
-  authUrl.searchParams.append('response_type', 'code');
-  authUrl.searchParams.append('client_id', process.env.SPOTIFY_CLIENT_ID || '');
-  authUrl.searchParams.append('scope', scope);
-  authUrl.searchParams.append('redirect_uri', redirectUri);
-  authUrl.searchParams.append('state', state);
-
-  console.log('Auth URL:', authUrl.toString());
-  res.redirect(authUrl.toString());
 });
 
 // Callback route
@@ -67,17 +69,17 @@ router.get('/callback', async (req: Request & { session: CustomSession }, res: R
     storedState,
     redirectUri,
     sessionID: req.sessionID,
-    session: req.session
+    session: req.session,
+    cookie: req.session.cookie
   });
 
-  // For testing purposes, allow direct access to callback
-  if (!code) {
-    console.log('No code provided, returning test response');
-    return res.json({ message: 'Callback endpoint is working' });
-  }
-
   if (!state || !storedState || state !== storedState) {
-    console.error('State mismatch:', { received: state, stored: storedState });
+    console.error('State mismatch:', { 
+      received: state, 
+      stored: storedState,
+      sessionID: req.sessionID,
+      cookie: req.session.cookie
+    });
     return res.status(400).json({ error: 'State mismatch' });
   }
 
@@ -112,8 +114,16 @@ router.get('/callback', async (req: Request & { session: CustomSession }, res: R
     req.session.refreshToken = refresh_token;
     req.session.tokenExpiry = Date.now() + expires_in * 1000;
 
-    // Redirect to frontend
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    // Save session before redirect
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Failed to save session' });
+      }
+
+      // Redirect to frontend
+      res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    });
   } catch (error: any) {
     console.error('Token exchange error:', error.response?.data || error);
     res.status(500).json({ error: 'Failed to exchange code for token' });
