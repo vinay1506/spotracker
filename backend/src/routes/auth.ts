@@ -18,28 +18,22 @@ const generateRandomString = (length: number): string => {
 // Login route
 router.get('/login', (req, res) => {
   try {
+    // Get the redirect URI from query params or use default
+    const redirectUri = req.query.redirect_uri as string || process.env.FRONTEND_URL;
+    
     // Log the full environment
     console.log('=== Login Route Environment ===');
     console.log('process.env keys:', Object.keys(process.env));
     console.log('SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID);
     console.log('SPOTIFY_REDIRECT_URI:', process.env.SPOTIFY_REDIRECT_URI);
-    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('FRONTEND_URL:', redirectUri);
     console.log('NODE_ENV:', process.env.NODE_ENV);
     console.log('============================');
 
     if (!process.env.SPOTIFY_CLIENT_ID) {
       const error = 'SPOTIFY_CLIENT_ID is not set in environment variables';
       console.error(error);
-      console.error('Current working directory:', process.cwd());
-      console.error('Environment file location:', require('path').resolve(process.cwd(), '.env'));
-      return res.status(500).json({ 
-        error: 'Server configuration error: Missing SPOTIFY_CLIENT_ID',
-        details: {
-          workingDirectory: process.cwd(),
-          envFileLocation: require('path').resolve(process.cwd(), '.env'),
-          envKeys: Object.keys(process.env)
-        }
-      });
+      return res.status(500).json({ error: 'Server configuration error: Missing SPOTIFY_CLIENT_ID' });
     }
 
     if (!process.env.SPOTIFY_REDIRECT_URI) {
@@ -49,6 +43,7 @@ router.get('/login', (req, res) => {
 
     const state = generateRandomString(16);
     req.session.state = state;
+    req.session.redirectUri = redirectUri;
 
     const scope = [
       'user-read-private',
@@ -79,15 +74,16 @@ router.get('/login', (req, res) => {
 // Callback route
 router.get('/callback', async (req, res) => {
   const { code, state, error } = req.query;
+  const redirectUri = req.session.redirectUri || process.env.FRONTEND_URL;
 
   if (error) {
     console.error('Spotify auth error:', error);
-    return res.redirect(`${process.env.FRONTEND_URL}?error=access_denied`);
+    return res.redirect(`${redirectUri}?error=access_denied`);
   }
 
   if (state !== req.session.state) {
     console.error('State mismatch');
-    return res.redirect(`${process.env.FRONTEND_URL}?error=state_mismatch`);
+    return res.redirect(`${redirectUri}?error=state_mismatch`);
   }
 
   try {
@@ -127,10 +123,10 @@ router.get('/callback', async (req, res) => {
     req.session.user = user;
 
     console.log('User authenticated:', user.display_name);
-    res.redirect(`${process.env.FRONTEND_URL}?success=true`);
+    res.redirect(`${redirectUri}?success=true`);
   } catch (error) {
     console.error('Token exchange error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}?error=token_exchange_failed`);
+    res.redirect(`${redirectUri}?error=token_exchange_failed`);
   }
 });
 

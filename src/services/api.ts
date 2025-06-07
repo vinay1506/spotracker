@@ -2,7 +2,7 @@ import axios from 'axios';
 import { SpotifyUser, TopTracksResponse, TopArtistsResponse, RecentlyPlayedResponse, ListeningStatsResponse, TimeRange } from '../types/spotify';
 
 // Use environment variable for API URL, fallback to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8888';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,7 +12,8 @@ const api = axios.create({
 // Auth endpoints
 export const authAPI = {
   login: () => {
-    window.location.href = `${API_BASE_URL}/auth/login`;
+    const currentUrl = window.location.origin;
+    window.location.href = `${API_BASE_URL}/auth/login?redirect_uri=${encodeURIComponent(currentUrl)}`;
   },
   
   logout: async () => {
